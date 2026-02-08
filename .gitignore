@@ -5,3 +5,12 @@ data/
 *.egg-info/
 dist/
 build/
+
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+*.secret
+auth.json
+credentials.*
