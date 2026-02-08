@@ -1,0 +1,16 @@
+# MemoryAtlas configuration
+# Copy to ~/tools/memoryatlas/config.yaml and customize
+
+# Scan settings
+scan_voice_memos: true
+
+# Publish settings
+publish_unpublished_only: true
+overwrite_notes: false
+
+# Transcription (Phase 2)
+whisper_model: turbo
+# whisper_language: null   # null = auto-detect; "en" or "ru" to force
+
+# Enrichment (Phase 4)
+ollama_model: qwen2.5:32b
