@@ -8,6 +8,7 @@ from .db import AtlasDB
 from .scanner import scan as do_scan
 from .publisher import publish as do_publish, publish_index, publish_about
 from .transcriber import transcribe_batch
+from .enricher import enrich_batch
 from .util import format_count_line
 from .constants import VERSION
 
@@ -185,6 +186,38 @@ def transcribe_cmd(
 
         if counts["done"] > 0:
             print("\nRepublishing transcribed notes...")
+            pub_counts = do_publish(config, db, force=True)
+            print(f"Notes updated: {pub_counts['updated']}")
+            publish_index(config, db)
+
+
+@app.command("enrich")
+def enrich_cmd(
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Max files to enrich"),
+    model: str = typer.Option(
+        "llama3.3:70b",
+        "--model", "-m",
+        help="Ollama model (llama3.3:70b, qwen2.5:32b, etc.)",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be enriched"),
+):
+    """Enrich transcripts with AI-generated metadata (summary, topics, people, sentiment)."""
+    config, db = _load(config_path)
+
+    with db:
+        db.init_schema()
+        counts = enrich_batch(
+            config, db,
+            limit=limit,
+            model=model,
+            verbose=verbose,
+            dry_run=dry_run,
+        )
+
+        if counts["done"] > 0:
+            print("\nRepublishing enriched notes...")
             pub_counts = do_publish(config, db, force=True)
             print(f"Notes updated: {pub_counts['updated']}")
             publish_index(config, db)

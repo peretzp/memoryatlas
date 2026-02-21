@@ -77,6 +77,17 @@ def generate_note_content(asset: Asset) -> str:
         lines.append(asset.summary)
         lines.append("")
 
+        # Add enrichment metadata if available
+        if asset.topics:
+            lines.append(f"**Topics**: {asset.topics}")
+            lines.append("")
+        if asset.people and asset.people.lower() != "none":
+            lines.append(f"**People**: {asset.people}")
+            lines.append("")
+        if asset.sentiment:
+            lines.append(f"**Sentiment**: {asset.sentiment}")
+            lines.append("")
+
     return "\n".join(lines)
 
 

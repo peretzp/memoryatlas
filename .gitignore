@@ -14,3 +14,7 @@ build/
 *.secret
 auth.json
 credentials.*
+
+# Logs
+*.log
+*.err
