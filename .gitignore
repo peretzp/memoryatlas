@@ -18,3 +18,4 @@ credentials.*
 # Logs
 *.log
 *.err
+recovery/
