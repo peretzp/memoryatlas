@@ -1,0 +1,71 @@
+# MemoryAtlas — Cursor Rules
+
+## Project
+
+Voice memos → searchable, translated, enriched Obsidian notes. Python 3.11, Typer CLI, SQLite, Ollama.
+
+Four-stage pipeline: **Scan → Transcribe → Enrich → Polish**
+
+| Stage | Module | What it does |
+|-------|--------|-------------|
+| Scan | scanner.py + apple.py | Import Apple Voice Memos metadata |
+| Transcribe | transcriber.py | Speech-to-text via mlx-whisper |
+| Enrich | enricher.py | Summary, topics, people, sentiment via Ollama |
+| Polish | philologist.py | Source restoration + literary English translation via Ollama |
+
+Output: publisher.py generates Obsidian markdown notes with YAML frontmatter.
+
+## Environment
+
+- **Python**: 3.11 (NOT 3.13). Activate: `source .venv/bin/activate`
+- **Entry point**: `atlas` CLI (installed via `pip install -e .`)
+- **Config**: `config.yaml` (per-machine, not committed). See `config.example.yaml`.
+- **Database**: `data/atlas.db` (SQLite, WAL mode). Schema in `db.py`.
+- **Tests**: `python -m pytest tests/` (when tests exist)
+- **Ollama**: Must be running locally for enrich/polish. Default model: qwen2.5:32b.
+
+## Ownership
+
+Claude Code (Claude-A) is the **primary architect** of this project. Cursor is the **visual editor**.
+
+**Cursor is great for**:
+- Tab completions in any Python file
+- Inline edits (Cmd+K): type hints, docstrings, error handling, small refactors
+- README and documentation updates
+- Config file maintenance
+- Visual diff review
+
+**Cursor should NOT**:
+- Redesign the pipeline architecture (use Claude Code)
+- Modify 5+ files in one operation (use Claude Code)
+- Make changes that require session memory or agent-protocol context
+- Commit to git without Peretz's approval
+
+## Key Files
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| cli.py | All CLI commands | Entry point for everything |
+| config.py | YAML config loader | All paths configurable, ~ expansion |
+| constants.py | Default paths, extensions | macOS defaults, override via config.yaml |
+| db.py | SQLite schema + CRUD | WAL mode, action_log audit table |
+| models.py | Asset dataclass | 20+ fields tracking full pipeline state |
+| philologist.py | Philological pipeline | Two-stage: restore + translate. Ollama HTTP API. |
+| publisher.py | Obsidian note generator | Frontmatter + metadata + 4-layer content |
+| enricher.py | LLM metadata extraction | Ollama CLI subprocess |
+| transcriber.py | Whisper transcription | mlx-whisper, resumable, crash-safe |
+
+## Coordination
+
+- **Agent protocol**: `~/agent-protocol.md` — check before major changes
+- **Ecosystem rules**: `~/.cursor/rules/ecosystem.mdc` — global context
+- **Strategy**: `~/CURSOR-ROLE-STRATEGY.md` — three-tool division of labor
+- **Handoffs**: Write proposals to `~/agent-protocol.md` under `## Proposals`
+
+## Style
+
+- GGO mode: execute without asking "shall I proceed?"
+- No emojis in code unless explicitly requested
+- Type hints encouraged but not required
+- Keep it simple — this is a personal tool, not enterprise software
+- Imports: stdlib first, then third-party, then local
