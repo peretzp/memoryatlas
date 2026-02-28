@@ -9,6 +9,7 @@ from .scanner import scan as do_scan
 from .publisher import publish as do_publish, publish_index, publish_about
 from .transcriber import transcribe_batch
 from .enricher import enrich_batch
+from .philologist import polish_batch
 from .util import format_count_line
 from .constants import VERSION
 
@@ -221,6 +222,52 @@ def enrich_cmd(
             pub_counts = do_publish(config, db, force=True)
             print(f"Notes updated: {pub_counts['updated']}")
             publish_index(config, db)
+
+
+@app.command("polish")
+def polish_cmd(
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Max files to polish"),
+    model: str = typer.Option(
+        "qwen2.5:32b",
+        "--model", "-m",
+        help="Ollama model for philological enhancement",
+    ),
+    language: Optional[str] = typer.Option(None, "--language", "-l", help="Language code filter (e.g., 'ru')"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be polished"),
+):
+    """Philological enhancement: restore source language + literary English translation."""
+    config, db = _load(config_path)
+
+    with db:
+        db.init_schema()
+        # Ensure new columns exist (migration)
+        try:
+            db.conn.execute("SELECT restored_text FROM asset LIMIT 1")
+        except Exception:
+            db.conn.execute("ALTER TABLE asset ADD COLUMN restored_text TEXT")
+            db.conn.execute("ALTER TABLE asset ADD COLUMN translated_text TEXT")
+            db.conn.execute("ALTER TABLE asset ADD COLUMN polished_at TEXT")
+            db.conn.commit()
+
+        counts = polish_batch(
+            config, db,
+            limit=limit,
+            model=model,
+            language=language,
+            verbose=verbose,
+            dry_run=dry_run,
+        )
+
+        if counts["done"] > 0 or counts.get("partial", 0) > 0:
+            print("\nRepublishing polished notes...")
+            pub_counts = do_publish(config, db, force=True)
+            print(f"Notes updated: {pub_counts['updated']}")
+            try:
+                publish_index(config, db)
+            except Exception as e:
+                print(f"Index update skipped (iCloud timeout): {e}")
 
 
 @app.command()

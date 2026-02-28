@@ -28,6 +28,7 @@ def generate_note_content(asset: Asset) -> str:
     lines.append(f"format: {asset.file_format or 'unknown'}")
     lines.append(f"transcribed: {str(asset.transcript_status == 'done').lower()}")
     lines.append(f"enriched: {str(asset.summary is not None).lower()}")
+    lines.append(f"polished: {str(asset.polished_at is not None).lower()}")
 
     tags = ["memoryatlas", f"memoryatlas/{asset.source_type.replace('_', '-')}"]
     if asset.transcript_status == "done":
@@ -87,6 +88,23 @@ def generate_note_content(asset: Asset) -> str:
         if asset.sentiment:
             lines.append(f"**Sentiment**: {asset.sentiment}")
             lines.append("")
+
+    # Philological enhancement (polished transcripts)
+    if asset.translated_text:
+        lines.append("## Translation")
+        lines.append("")
+        lines.append("*Literary English translation — faithful and elevated.*")
+        lines.append("")
+        lines.append(asset.translated_text)
+        lines.append("")
+
+    if asset.restored_text:
+        lines.append("## Restored Transcript")
+        lines.append("")
+        lines.append("*Source language restored from Whisper output — cleaned, punctuated, voice preserved.*")
+        lines.append("")
+        lines.append(asset.restored_text)
+        lines.append("")
 
     return "\n".join(lines)
 

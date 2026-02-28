@@ -30,6 +30,9 @@ class Asset:
     people: Optional[str] = None
     sentiment: Optional[str] = None
     enriched_at: Optional[str] = None
+    restored_text: Optional[str] = None
+    translated_text: Optional[str] = None
+    polished_at: Optional[str] = None
     note_path: Optional[str] = None
     published_at: Optional[str] = None
     note_hash: Optional[str] = None

@@ -1,16 +1,51 @@
-# MemoryAtlas configuration
-# Copy to ~/tools/memoryatlas/config.yaml and customize
+# MemoryAtlas Configuration
+# Copy to config.yaml and edit for your machine:
+#   cp config.example.yaml config.yaml
+#
+# All paths support ~ expansion.
+# Any field not specified uses the default (macOS paths).
 
-# Scan settings
+# ── Data Storage ──────────────────────────────────────────
+# Where the database, transcripts, and working files live.
+data_dir: ~/tools/memoryatlas/data
+
+# ── Source: Apple Voice Memos (macOS only) ────────────────
+# Path to the Apple Voice Memos CloudRecordings database.
+# Comment out or set scan_voice_memos: false on Linux.
+apple_db_path: ~/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings/CloudRecordings.db
 scan_voice_memos: true
 
-# Publish settings
+# ── Output: Obsidian Vault ────────────────────────────────
+# Root of your Obsidian vault, and the subfolder for MemoryAtlas notes.
+vault_path: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/PracticeLife
+atlas_vault_dir: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/PracticeLife/MemoryAtlas
+
+# ── Transcription (Whisper) ───────────────────────────────
+# Model ID from HuggingFace (mlx-whisper) or OpenAI Whisper.
+# Options: turbo, mlx-community/whisper-turbo, mlx-community/whisper-large-v3-mlx
+whisper_model: turbo
+# Force language detection (null = auto-detect):
+# whisper_language: ru
+
+# ── LLM (Ollama) ─────────────────────────────────────────
+# Model for enrichment and philological polish.
+# Smaller: qwen2.5:32b (needs ~22GB VRAM)
+# Larger:  llama3.3:70b (needs ~42GB VRAM)
+ollama_model: qwen2.5:32b
+
+# ── Publishing ────────────────────────────────────────────
 publish_unpublished_only: true
 overwrite_notes: false
 
-# Transcription (Phase 2)
-whisper_model: turbo
-# whisper_language: null   # null = auto-detect; "en" or "ru" to force
 
-# Enrichment (Phase 4)
-ollama_model: qwen2.5:32b
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EXAMPLE: Anvil (Linux, 96GB, GPU)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Uncomment and adjust for a Linux workstation:
+#
+# data_dir: ~/memoryatlas/data
+# scan_voice_memos: false
+# vault_path: ~/obsidian-vault
+# atlas_vault_dir: ~/obsidian-vault/MemoryAtlas
+# ollama_model: llama3.3:70b
+# whisper_model: large-v3
