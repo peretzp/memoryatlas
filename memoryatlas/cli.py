@@ -9,7 +9,7 @@ from .scanner import scan as do_scan
 from .publisher import publish as do_publish, publish_index, publish_about
 from .transcriber import transcribe_batch
 from .enricher import enrich_batch
-from .philologist import polish_batch
+from .philologist import polish_batch, polish_srt, check_ollama_health
 from .util import format_count_line
 from .constants import VERSION
 
@@ -231,7 +231,12 @@ def polish_cmd(
     model: str = typer.Option(
         "qwen2.5:32b",
         "--model", "-m",
-        help="Ollama model for philological enhancement",
+        help="Model for philological enhancement",
+    ),
+    backend: str = typer.Option(
+        "ollama",
+        "--backend", "-b",
+        help="LLM backend: ollama (local), claude (API), auto (try claude then ollama)",
     ),
     language: Optional[str] = typer.Option(None, "--language", "-l", help="Language code filter (e.g., 'ru')"),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -255,6 +260,7 @@ def polish_cmd(
             config, db,
             limit=limit,
             model=model,
+            backend=backend,
             language=language,
             verbose=verbose,
             dry_run=dry_run,
@@ -268,6 +274,77 @@ def polish_cmd(
                 publish_index(config, db)
             except Exception as e:
                 print(f"Index update skipped (iCloud timeout): {e}")
+
+
+@app.command("polish-srt")
+def polish_srt_cmd(
+    srt_file: Path = typer.Argument(..., help="Path to SRT subtitle file"),
+    output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+    model: str = typer.Option(
+        "qwen2.5:32b",
+        "--model", "-m",
+        help="Model for philological enhancement",
+    ),
+    backend: str = typer.Option(
+        "ollama",
+        "--backend", "-b",
+        help="LLM backend: ollama, claude, auto",
+    ),
+    language: str = typer.Option(
+        "Russian",
+        "--language", "-l",
+        help="Source language name (Russian, Japanese, etc.)",
+    ),
+    mode: str = typer.Option(
+        "translate",
+        "--mode",
+        help="Processing mode: translate, restore, both",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """Philological enhancement of SRT subtitle files.
+
+    Processes subtitles through the same two-stage pipeline:
+    restore (source language cleanup) and/or translate (literary English).
+    Timing codes are preserved.
+    """
+    result = polish_srt(
+        srt_path=str(srt_file),
+        output_path=str(output_dir) if output_dir else None,
+        language=language,
+        model=model,
+        backend=backend,
+        mode=mode,
+        verbose=verbose,
+    )
+
+    if result["status"] == "done":
+        print(f"\nDone: {result['detail']}")
+        for f in result.get("output_files", []):
+            print(f"  Output: {f}")
+    else:
+        print(f"\nFailed: {result['detail']}")
+        raise typer.Exit(1)
+
+
+@app.command("health")
+def health_cmd(
+    model: str = typer.Option("qwen2.5:32b", "--model", "-m", help="Model to check"),
+):
+    """Check Ollama health and model availability."""
+    result = check_ollama_health(model)
+
+    if result["healthy"]:
+        print(f"  OK  Ollama server: {result['detail']}")
+        if result["model_available"]:
+            print(f"  OK  Model {model}: available")
+        else:
+            print(f"  !!  Model {model}: not found")
+            print(f"      Available: {', '.join(result['models_loaded'])}")
+            print(f"      Pull: ollama pull {model}")
+    else:
+        print(f"  !!  Ollama: {result['detail']}")
+        print(f"      Start: ollama serve")
 
 
 @app.command()

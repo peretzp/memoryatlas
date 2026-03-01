@@ -18,3 +18,7 @@ atlas = "memoryatlas.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["memoryatlas*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

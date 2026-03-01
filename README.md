@@ -133,16 +133,58 @@ atlas polish --dry-run
 atlas transcribe --verbose
 ```
 
+### LLM Backend Selection
+
+```bash
+# Default: local Ollama (private, no API costs)
+atlas polish --backend ollama
+
+# Claude API: literary-tier quality for crown jewels (requires ANTHROPIC_API_KEY)
+atlas polish --backend claude --model claude-sonnet-4-5-20250929
+
+# Auto: try Claude first, fall back to Ollama if unavailable
+atlas polish --backend auto
+```
+
+### SRT Subtitle Processing
+
+```bash
+# Translate Russian subtitles to literary English
+atlas polish-srt transcript.srt --language Russian --mode translate
+
+# Restore source language (clean Whisper artifacts)
+atlas polish-srt transcript.srt --language Russian --mode restore
+
+# Both: restore then translate (outputs two files)
+atlas polish-srt transcript.srt --language Russian --mode both
+
+# Use Claude for highest quality
+atlas polish-srt transcript.srt --backend claude
+```
+
 ### Management
 
 ```bash
 atlas init                    # Create database + vault directories
 atlas status                  # Show statistics (total, hours, transcribed, enriched)
 atlas doctor                  # Health check (dependencies, paths, database)
+atlas health                  # Check Ollama server + model availability
 atlas publish                 # (Re)generate Obsidian notes from database
 atlas publish --force         # Regenerate ALL notes (even unchanged)
 atlas publish --index-only    # Only update the _Index.md file
 atlas info <uuid>             # Show details for a single asset (prefix match OK)
+```
+
+## Testing
+
+```bash
+# Run all tests (55 tests, ~0.3s)
+python -m pytest tests/ -v
+
+# Run specific module
+python -m pytest tests/test_philologist.py -v
+
+# Tests use mocks — no Ollama or API keys needed
 ```
 
 ## Architecture
@@ -158,9 +200,20 @@ memoryatlas/
 ├── apple.py         # Apple database reader (read-only, immutable mode)
 ├── transcriber.py   # Whisper batch transcription
 ├── enricher.py      # Ollama metadata extraction
-├── philologist.py   # Source restoration + literary translation
+├── philologist.py   # Source restoration + literary translation + SRT
 ├── publisher.py     # Obsidian note generator
 └── util.py          # Helpers (JSONL writer, formatters)
+
+scripts/
+└── deploy-to-anvil.sh  # Rsync code + setup venv on Anvil
+
+tests/
+├── conftest.py      # Shared fixtures (temp DB, config, assets)
+├── test_config.py   # Config loading + YAML parsing
+├── test_db.py       # Database operations
+├── test_models.py   # Asset dataclass properties
+├── test_philologist.py  # Pre-clean, SRT parse, LLM routing (mocked)
+└── test_publisher.py    # Obsidian note generation
 ```
 
 ### Database
@@ -226,6 +279,17 @@ polished: true
 ## Restored Transcript ← Cleaned source language (philologist stage 1)
 ## Transcript         ← Link to raw Whisper output
 ```
+
+## Resilience
+
+The batch processing pipeline is built for unattended overnight runs:
+
+- **Health check**: `atlas health` (or automatic pre-flight) verifies Ollama is up and model is loaded
+- **Model preload**: Warms up the model before batch to avoid cold-start timeouts
+- **Exponential backoff**: Retries transient failures (connection refused, timeouts) with 5s → 15s → 45s delays
+- **Circuit breaker**: Stops batch after 5 consecutive failures (Ollama probably crashed)
+- **Graceful interruption**: Ctrl+C finishes the current item, saves progress, then exits
+- **Partial results saved**: If restoration succeeds but translation fails, the restored text is preserved
 
 ## Design Principles
 
