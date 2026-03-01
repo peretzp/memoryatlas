@@ -179,6 +179,7 @@ def preload_model(model: str = "qwen2.5:32b") -> bool:
         "model": model,
         "prompt": "Hello",
         "stream": False,
+        "keep_alive": -1,  # Keep model loaded indefinitely during batch
         "options": {"num_predict": 1}
     }).encode("utf-8")
 
@@ -202,6 +203,7 @@ def call_ollama_api(
     model: str = "qwen2.5:32b",
     max_retries: int = 3,
     base_delay: float = 5.0,
+    temperature: float = 0.3,
 ) -> Optional[str]:
     """Call Ollama via HTTP API with exponential backoff retry.
 
@@ -218,7 +220,7 @@ def call_ollama_api(
         "stream": False,
         "options": {
             "num_ctx": 8192,
-            "temperature": 0.3,
+            "temperature": temperature,
         }
     }).encode("utf-8")
 
@@ -321,12 +323,14 @@ def call_llm(
     prompt: str,
     backend: str = "ollama",
     model: Optional[str] = None,
+    temperature: float = 0.3,
     verbose: bool = False,
 ) -> Optional[str]:
     """Route to the appropriate LLM backend.
 
     backend: "ollama" (default), "claude", "auto"
     auto: try Claude first, fall back to Ollama
+    temperature: 0.3 for restoration (faithful), 0.6 for translation (natural)
     """
     if backend == "claude":
         claude_model = model or "claude-sonnet-4-5-20250929"
@@ -345,11 +349,11 @@ def call_llm(
         if verbose:
             print(f"  Claude unavailable, falling back to Ollama...")
         ollama_model = model if model and "claude" not in model else "qwen2.5:32b"
-        return call_ollama_api(prompt, model=ollama_model)
+        return call_ollama_api(prompt, model=ollama_model, temperature=temperature)
 
     else:  # ollama (default)
         ollama_model = model or "qwen2.5:32b"
-        return call_ollama_api(prompt, model=ollama_model)
+        return call_ollama_api(prompt, model=ollama_model, temperature=temperature)
 
 
 def pre_clean(text: str) -> str:
@@ -395,7 +399,7 @@ def restore_transcript(
     if verbose:
         print(f"  Stage 1 (Restore): sending {len(cleaned)} chars to {backend}/{model}...")
 
-    response = call_llm(prompt, backend=backend, model=model, verbose=verbose)
+    response = call_llm(prompt, backend=backend, model=model, temperature=0.3, verbose=verbose)
     if response is None:
         return None
 
@@ -426,7 +430,8 @@ def translate_transcript(
     if verbose:
         print(f"  Stage 2 (Translate): sending {len(text)} chars to {backend}/{model}...")
 
-    response = call_llm(prompt, backend=backend, model=model, verbose=verbose)
+    # Higher temperature for translation = more natural, less formulaic output
+    response = call_llm(prompt, backend=backend, model=model, temperature=0.6, verbose=verbose)
     if response is None:
         return None
 
