@@ -214,7 +214,7 @@ def call_ollama_api(
     import urllib.error
 
     url = "http://localhost:11434/api/generate"
-    payload = json.dumps({
+    request_body = {
         "model": model,
         "prompt": prompt,
         "stream": False,
@@ -222,7 +222,12 @@ def call_ollama_api(
             "num_ctx": 8192,
             "temperature": temperature,
         }
-    }).encode("utf-8")
+    }
+    # qwen3 models default to thinking mode — disable it so response
+    # goes into "response" field instead of "thinking" field
+    if "qwen3" in model:
+        request_body["think"] = False
+    payload = json.dumps(request_body).encode("utf-8")
 
     for attempt in range(max_retries):
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
@@ -605,6 +610,7 @@ def polish_srt(
     output_files = []
     stem = srt_file.stem
     parent = Path(output_path) if output_path else srt_file.parent
+    parent.mkdir(parents=True, exist_ok=True)
 
     if mode in ("restore", "both"):
         print("  Stage 1: Restoring source language...")
